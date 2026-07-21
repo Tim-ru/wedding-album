@@ -35,6 +35,7 @@ VITE_SUPABASE_BUCKET=wedding-photos
 VITE_ALBUM_ID=main
 VITE_COUPLE_NAMES=Аня & Максим
 VITE_ADMIN_PIN=1234
+VITE_ENABLE_DELETES=true
 ```
 
 ## Важное про админку
@@ -48,7 +49,7 @@ GitHub Pages отдает только статический фронт. Это
 - гости публично смотрят альбом;
 - `/admin` закрыт PIN для удобства, но это не криптографическая защита;
 - админка умеет скачать все фото ZIP-архивом;
-- удаление выключено по умолчанию.
+- админка умеет удалять фото, если выполнены delete policies из `supabase.sql`.
 
 Если нужно безопасное удаление из админки, добавь позже Supabase Edge Function
 или небольшой backend, где будет храниться service role key.
@@ -78,3 +79,11 @@ https://username.github.io/wedding-album/
 ```text
 https://username.github.io/wedding-album/#/admin
 ```
+
+Сгенерировать PNG:
+
+```bash
+npm run qr -- "https://username.github.io/wedding-album/"
+```
+
+Файл появится в `../outputs/wedding-album-qr.png`.

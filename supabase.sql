@@ -61,18 +61,19 @@ for select
 to anon
 using (bucket_id = 'wedding-photos');
 
--- Optional and intentionally disabled by default in the app.
--- Only add these policies if you accept that a public static frontend cannot
--- keep destructive admin actions truly secret.
---
--- create policy "Public can delete wedding photo rows"
--- on public.photos
--- for delete
--- to anon
--- using (album_id = 'main');
---
--- create policy "Public can delete wedding photo files"
--- on storage.objects
--- for delete
--- to anon
--- using (bucket_id = 'wedding-photos' and (storage.foldername(name))[1] = 'main');
+-- Needed for the static admin screen to remove photos. A public frontend cannot
+-- keep destructive actions truly secret, so use a backend/Edge Function later if
+-- you need stronger admin protection.
+drop policy if exists "Public can delete wedding photo rows" on public.photos;
+create policy "Public can delete wedding photo rows"
+on public.photos
+for delete
+to anon
+using (album_id = 'main');
+
+drop policy if exists "Public can delete wedding photo files" on storage.objects;
+create policy "Public can delete wedding photo files"
+on storage.objects
+for delete
+to anon
+using (bucket_id = 'wedding-photos' and (storage.foldername(name))[1] = 'main');

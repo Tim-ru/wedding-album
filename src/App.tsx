@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   Download,
+  Heart,
   ImagePlus,
   Images,
   Loader2,
@@ -11,7 +12,14 @@ import {
   X,
 } from 'lucide-react'
 import JSZip from 'jszip'
+import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry'
 import { HashRouter, Link, Route, Routes } from 'react-router-dom'
+import { Badge } from './components/ui/badge'
+import { Button } from './components/ui/button'
+import { Card, CardContent, CardHeader } from './components/ui/card'
+import { DialogContent, DialogHeader, DialogOverlay } from './components/ui/dialog'
+import { FileUpload } from './components/ui/file-upload'
+import { Input } from './components/ui/input'
 import { supabase, supabaseConfigured } from './lib/supabase'
 import './App.css'
 
@@ -191,6 +199,13 @@ function AlbumPage() {
       <Header photoCount={photos.length} />
 
       <section className="hero-section" aria-labelledby="album-title">
+        <div className="hero-mark" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
         <div>
           <p className="eyebrow">Общий альбом</p>
           <h1 id="album-title">{COUPLE_NAMES}</h1>
@@ -199,82 +214,70 @@ function AlbumPage() {
             поймали гости.
           </p>
         </div>
-        <Link className="quiet-link" to="/admin">
-          Админка
-        </Link>
       </section>
 
       {!supabaseConfigured && <SetupNotice />}
 
-      <section className="upload-panel" aria-labelledby="upload-title">
-        <div className="panel-heading">
+      <Card className="upload-panel" aria-labelledby="upload-title">
+        <CardHeader className="panel-heading">
           <div>
             <h2 id="upload-title">Добавить фотографии</h2>
             <p>Можно выбрать сразу несколько снимков.</p>
           </div>
           <ImagePlus aria-hidden="true" />
-        </div>
+        </CardHeader>
 
-        <label className="field">
-          <span>Имя гостя</span>
-          <input
-            value={guestName}
-            onChange={(event) => setGuestName(event.target.value)}
-            placeholder="Например, Аня"
-            autoComplete="name"
-          />
-        </label>
+        <CardContent className="upload-content">
+          <label className="field">
+            <span>Имя гостя</span>
+            <Input
+              value={guestName}
+              onChange={(event) => setGuestName(event.target.value)}
+              placeholder="Например, Аня"
+              autoComplete="name"
+            />
+          </label>
 
-        <label
-          className="drop-zone"
-          onDrop={(event) => {
-            event.preventDefault()
-            onPickFiles(event.dataTransfer.files)
-          }}
-          onDragOver={(event) => event.preventDefault()}
-        >
-          <Upload aria-hidden="true" />
-          <span>Выбрать фото</span>
-          <small>JPG, PNG, HEIC/WebP если поддерживает браузер, до {MAX_FILE_SIZE_MB} МБ</small>
-          <input
-            type="file"
+          <FileUpload
             accept="image/*"
+            description={`JPG, PNG, HEIC/WebP если поддерживает браузер, до ${MAX_FILE_SIZE_MB} МБ`}
             multiple
-            onChange={(event) => onPickFiles(event.target.files)}
+            onFiles={onPickFiles}
+            title="Выбрать фото"
           />
-        </label>
 
-        {items.length > 0 && (
-          <div className="upload-list" aria-live="polite">
-            {items.map((item) => (
-              <div className="upload-row" key={item.id}>
-                <img src={item.previewUrl} alt="" />
-                <div>
-                  <strong>{item.file.name}</strong>
-                  <span>{formatBytes(item.file.size)}</span>
-                  {item.error && <small className="error-text">{item.error}</small>}
+          {items.length > 0 && (
+            <div className="upload-list" aria-live="polite">
+              {items.map((item) => (
+                <div className="upload-row" key={item.id}>
+                  <img src={item.previewUrl} alt="" />
+                  <div>
+                    <strong>{item.file.name}</strong>
+                    <span>{formatBytes(item.file.size)}</span>
+                    {item.error && <small className="error-text">{item.error}</small>}
+                  </div>
+                  <StatusBadge status={item.status} />
                 </div>
-                <StatusBadge status={item.status} />
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        <button
-          className="primary-action"
-          type="button"
-          disabled={!queuedCount || uploading}
-          onClick={uploadQueued}
-        >
-          {uploading ? <Loader2 className="spin" /> : <Upload />}
-          {uploading
-            ? 'Загружаем'
-            : queuedCount
-              ? `Загрузить ${queuedCount}`
-              : 'Фото выбраны'}
-        </button>
+          <Button type="button" disabled={!queuedCount || uploading} onClick={uploadQueued}>
+            {uploading ? <Loader2 className="spin" /> : <Upload />}
+            {uploading
+              ? 'Загружаем'
+              : queuedCount
+                ? `Загрузить ${queuedCount}`
+                : 'Фото выбраны'}
+          </Button>
 
-        {message && <p className="error-text">{message}</p>}
+          {message && <p className="error-text">{message}</p>}
+        </CardContent>
+      </Card>
+
+      <section className="red-note" aria-label="Сообщение гостям">
+        <h2>Спасибо, что делитесь моментами</h2>
+        <p>Пусть в альбоме останется все самое живое: улыбки, танцы и маленькие детали дня.</p>
       </section>
 
       <section className="gallery-section" aria-labelledby="gallery-title">
@@ -283,16 +286,20 @@ function AlbumPage() {
             <h2 id="gallery-title">Галерея</h2>
             <p>{photos.length ? `${photos.length} фото` : 'Пока пусто'}</p>
           </div>
-          <button className="icon-button" type="button" onClick={loadPhotos}>
+          <Button variant="secondary" size="icon" type="button" onClick={loadPhotos}>
             <RefreshCw aria-hidden="true" />
             <span className="sr-only">Обновить галерею</span>
-          </button>
+          </Button>
         </div>
 
         {loading ? (
           <EmptyState title="Загружаем альбом" copy="Сейчас подтянем фотографии." />
         ) : photos.length ? (
-          <div className="photo-grid">
+          <ResponsiveMasonry
+            columnsCountBreakPoints={{ 0: 2, 620: 3, 900: 4, 1120: 5 }}
+            gutterBreakPoints={{ 0: 10, 620: 12, 900: 14 }}
+          >
+            <Masonry className="photo-grid">
             {photos.map((photo) => (
               <button
                 className="photo-tile"
@@ -304,7 +311,8 @@ function AlbumPage() {
                 <span>{formatDate(photo.created_at)}</span>
               </button>
             ))}
-          </div>
+            </Masonry>
+          </ResponsiveMasonry>
         ) : (
           <EmptyState
             title="Первое фото еще впереди"
@@ -395,15 +403,26 @@ function AdminPage() {
     }
 
     setBusy(photo.id)
+    const { error: rowError } = await supabase.from('photos').delete().eq('id', photo.id)
+
+    if (rowError) {
+      setError(rowError.message || 'Не удалось удалить запись фото.')
+      setBusy('')
+      return
+    }
+
+    setPhotos((current) => current.filter((item) => item.id !== photo.id))
+
     const { error: storageError } = await supabase.storage
       .from(BUCKET)
       .remove([photo.storage_path])
-    const { error: rowError } = await supabase.from('photos').delete().eq('id', photo.id)
 
-    if (storageError || rowError) {
-      setError(storageError?.message || rowError?.message || 'Не удалось удалить фото.')
+    if (storageError) {
+      setError(
+        `Фото скрыто из альбома, но файл не удалился из Storage: ${storageError.message}`,
+      )
     } else {
-      setPhotos((current) => current.filter((item) => item.id !== photo.id))
+      setError('')
     }
     setBusy('')
   }
@@ -414,11 +433,11 @@ function AdminPage() {
         <Link className="quiet-link" to="/">
           Назад в альбом
         </Link>
-        <section className="login-panel">
+        <Card className="login-panel">
           <Lock aria-hidden="true" />
           <h1>Админка</h1>
           <p>Введите PIN, чтобы выгрузить фотографии.</p>
-          <input
+          <Input
             value={pin}
             onChange={(event) => setPin(event.target.value)}
             onKeyDown={(event) => {
@@ -427,11 +446,11 @@ function AdminPage() {
             placeholder="PIN"
             type="password"
           />
-          <button className="primary-action" type="button" onClick={unlock}>
+          <Button type="button" onClick={unlock}>
             Открыть
-          </button>
+          </Button>
           {error && <p className="error-text">{error}</p>}
-        </section>
+        </Card>
       </main>
     )
   }
@@ -442,10 +461,10 @@ function AdminPage() {
         <Link className="quiet-link" to="/">
           Назад в альбом
         </Link>
-        <button className="icon-button" type="button" onClick={loadPhotos}>
+        <Button variant="secondary" size="icon" type="button" onClick={loadPhotos}>
           <RefreshCw aria-hidden="true" />
           <span className="sr-only">Обновить список</span>
-        </button>
+        </Button>
       </div>
 
       <section className="hero-section compact">
@@ -454,15 +473,15 @@ function AdminPage() {
           <h1>Выгрузка альбома</h1>
           <p className="hero-copy">Скачайте все фотографии одним ZIP-архивом.</p>
         </div>
-        <button
-          className="primary-action fit"
+        <Button
+          className="fit"
           type="button"
           disabled={!photos.length || busy === 'zip'}
           onClick={downloadZip}
         >
           {busy === 'zip' ? <Loader2 className="spin" /> : <Download />}
           Скачать ZIP
-        </button>
+        </Button>
       </section>
 
       {error && <p className="error-banner">{error}</p>}
@@ -485,15 +504,17 @@ function AdminPage() {
                 <Download aria-hidden="true" />
                 <span className="sr-only">Скачать фото</span>
               </a>
-              <button
-                className="icon-button danger"
+              <Button
+                className="danger"
+                variant="secondary"
+                size="icon"
                 type="button"
                 disabled={busy === photo.id}
                 onClick={() => void deletePhoto(photo)}
               >
                 {busy === photo.id ? <Loader2 className="spin" /> : <Trash2 />}
                 <span className="sr-only">Удалить фото</span>
-              </button>
+              </Button>
             </article>
           ))
         ) : (
@@ -511,7 +532,12 @@ function Header({ photoCount }: { photoCount: number }) {
         <Images aria-hidden="true" />
         <span>{COUPLE_NAMES}</span>
       </Link>
-      <span>{photoCount} фото</span>
+      <div className="topbar-actions">
+        <span>{photoCount} фото</span>
+        <Link className="admin-shortcut" to="/admin" aria-label="Открыть админку">
+          <Heart aria-hidden="true" />
+        </Link>
+      </div>
     </header>
   )
 }
@@ -537,11 +563,17 @@ function StatusBadge({ status }: { status: UploadItem['status'] }) {
   }
 
   return (
-    <span className={`status-badge ${status}`}>
+    <Badge className={`status-badge ${status}`} variant={badgeVariant(status)}>
       {status === 'uploading' && <Loader2 className="spin" />}
       {labels[status]}
-    </span>
+    </Badge>
   )
+}
+
+function badgeVariant(status: UploadItem['status']): 'secondary' | 'success' | 'destructive' {
+  if (status === 'done') return 'success'
+  if (status === 'error') return 'destructive'
+  return 'secondary'
 }
 
 function EmptyState({ title, copy }: { title: string; copy: string }) {
@@ -556,19 +588,25 @@ function EmptyState({ title, copy }: { title: string; copy: string }) {
 
 function PhotoDialog({ photo, onClose }: { photo: Photo; onClose: () => void }) {
   return (
-    <div className="dialog-backdrop" role="dialog" aria-modal="true">
-      <div className="photo-dialog">
-        <button className="icon-button close-button" type="button" onClick={onClose}>
+    <DialogOverlay>
+      <DialogContent className="photo-dialog">
+        <Button
+          className="close-button"
+          variant="secondary"
+          size="icon"
+          type="button"
+          onClick={onClose}
+        >
           <X aria-hidden="true" />
           <span className="sr-only">Закрыть</span>
-        </button>
+        </Button>
         <img src={photo.public_url} alt={photo.guest_name || 'Фото со свадьбы'} />
-        <div>
+        <DialogHeader>
           <strong>{photo.guest_name || 'Гость без имени'}</strong>
           <span>{formatDate(photo.created_at)}</span>
-        </div>
-      </div>
-    </div>
+        </DialogHeader>
+      </DialogContent>
+    </DialogOverlay>
   )
 }
 
